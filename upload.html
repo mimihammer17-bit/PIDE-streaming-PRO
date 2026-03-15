@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Publier — PIDE Stream</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="../index.html" class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 24 24" fill="white"><polygon points="9,6 20,12 9,18"/></svg></div>
+    <span class="logo-name">PIDE<span>stream</span></span>
+  </a>
+  <div class="nav-right">
+    <div class="avatar-wrap" id="avatarWrap">
+      <img src="" class="avatar" id="userAvatar" onclick="toggleMenu()"/>
+      <div class="dropdown hidden" id="dropdown">
+        <div class="dropdown-head"><img src="" id="ddAvatar"/><div><div class="dropdown-head-name" id="ddName"></div></div></div>
+        <a href="../index.html" class="dropdown-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Accueil</a>
+        <a href="dashboard.html" class="dropdown-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Tableau de bord</a>
+        <button class="dropdown-item red" onclick="logoutUser()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<aside class="sidebar">
+  <a href="../index.html" class="sidebar-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Accueil</a>
+  <a href="dashboard.html" class="sidebar-item active"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Studio</a>
+</aside>
+
+<main class="main">
+  <!-- Non connecté -->
+  <div id="notLogged" class="hidden" style="text-align:center;padding:80px 24px">
+    <div style="font-size:56px;margin-bottom:16px">🔒</div>
+    <h2 style="font-size:18px;font-weight:500;margin-bottom:8px">Connectez-vous pour publier</h2>
+    <button class="btn-login" style="margin:0 auto;display:inline-flex" onclick="loginGoogle()">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Se connecter
+    </button>
+  </div>
+
+  <!-- Formulaire -->
+  <div id="uploadForm">
+    <div class="page-header">
+      <h1>Publier du contenu</h1>
+      <p>Partage ta vidéo ou ton film avec le monde entier</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:900px">
+      <div>
+        <div class="form-group">
+          <label class="form-label">Titre *</label>
+          <input type="text" class="form-input" id="titleInput" placeholder="Titre de ta vidéo ou film" maxlength="100"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" id="descInput" placeholder="Décris ton contenu..." rows="4"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="typeSelect">
+              <option value="video">📹 Vidéo</option>
+              <option value="film">🎬 Film</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Accès</label>
+            <select class="form-select" id="paidSelect" onchange="togglePrice()">
+              <option value="free">🆓 Gratuit</option>
+              <option value="paid">💰 Payant</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group hidden" id="priceGroup">
+          <label class="form-label">Prix (€)</label>
+          <input type="number" class="form-input" id="priceInput" placeholder="Ex: 4.99" min="0.5" max="99" step="0.01"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Durée (ex: 12:34)</label>
+          <input type="text" class="form-input" id="durInput" placeholder="12:34" maxlength="8"/>
+        </div>
+      </div>
+
+      <div>
+        <div class="form-group">
+          <label class="form-label">Fichier vidéo * (MP4 recommandé)</label>
+          <div class="upload-zone" id="videoZone" onclick="document.getElementById('videoFile').click()">
+            <div class="upload-zone-icon">🎬</div>
+            <div class="upload-zone-text" id="videoName">Cliquer pour choisir</div>
+            <div class="upload-zone-hint">MP4, MOV, AVI · Max 2 GB</div>
+          </div>
+          <input type="file" id="videoFile" accept="video/*" hidden onchange="pickVideo(this)"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Miniature</label>
+          <div class="upload-zone" style="padding:16px" id="thumbZone" onclick="document.getElementById('thumbFile').click()">
+            <div id="thumbPrev" style="display:none"><img id="thumbImg" style="max-height:100px;border-radius:6px"/></div>
+            <div id="thumbPh"><div class="upload-zone-icon" style="font-size:28px">🖼️</div><div class="upload-zone-text">Choisir une image</div><div class="upload-zone-hint">JPG, PNG · 16:9</div></div>
+          </div>
+          <input type="file" id="thumbFile" accept="image/*" hidden onchange="pickThumb(this)"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="hidden" id="progressWrap" style="max-width:900px;margin-top:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:13px;color:#aaa" id="progressLabel">Envoi en cours...</span>
+        <span style="font-size:13px;color:var(--accent)" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:24px">
+      <button class="btn-red" id="btnPublish" onclick="doUpload()">🚀 Publier</button>
+      <a href="../index.html" class="btn-ghost">Annuler</a>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
+
+const cfg={apiKey:"AIzaSyBmVFW68wgt6x0AsAKxhi8mXsuwFVEErZ0",authDomain:"pide-streaming.firebaseapp.com",projectId:"pide-streaming",storageBucket:"pide-streaming.firebasestorage.app",messagingSenderId:"659902528117",appId:"1:659902528117:web:77eb7419642a108379963c"};
+const app=initializeApp(cfg);const auth=getAuth(app);const db=getFirestore(app);const storage=getStorage(app);const prov=new GoogleAuthProvider();
+let me=null,vfile=null,tfile=null;
+
+onAuthStateChanged(auth,u=>{
+  me=u;
+  if(u){
+    document.getElementById('userAvatar').src=u.photoURL;
+    document.getElementById('ddAvatar').src=u.photoURL;
+    document.getElementById('ddName').textContent=u.displayName;
+    document.getElementById('notLogged').classList.add('hidden');
+    document.getElementById('uploadForm').style.display='block';
+  } else {
+    document.getElementById('notLogged').classList.remove('hidden');
+    document.getElementById('uploadForm').style.display='none';
+  }
+});
+
+window.pickVideo=i=>{vfile=i.files[0];if(vfile){document.getElementById('videoName').textContent=vfile.name;document.getElementById('videoZone').style.borderColor='#888';}};
+window.pickThumb=i=>{tfile=i.files[0];if(tfile){const r=new FileReader();r.onload=e=>{document.getElementById('thumbImg').src=e.target.result;document.getElementById('thumbPrev').style.display='block';document.getElementById('thumbPh').style.display='none';};r.readAsDataURL(tfile);}};
+window.togglePrice=()=>{document.getElementById('priceGroup').classList.toggle('hidden',document.getElementById('paidSelect').value!=='paid');};
+
+window.doUpload=async()=>{
+  if(!me){alert('Connectez-vous !');return;}
+  const title=document.getElementById('titleInput').value.trim();
+  if(!title){alert('Donnez un titre');return;}
+  if(!vfile){alert('Choisissez une vidéo');return;}
+  const isPaid=document.getElementById('paidSelect').value==='paid';
+  const price=isPaid?parseFloat(document.getElementById('priceInput').value):0;
+  if(isPaid&&(!price||price<0.5)){alert('Prix invalide (min 0.50€)');return;}
+  const btn=document.getElementById('btnPublish');
+  btn.disabled=true;btn.textContent='⏳ Envoi...';
+  document.getElementById('progressWrap').classList.remove('hidden');
+  try{
+    const vref=ref(storage,`videos/${me.uid}/${Date.now()}_${vfile.name}`);
+    const task=uploadBytesResumable(vref,vfile);
+    task.on('state_changed',s=>{
+      const p=Math.round(s.bytesTransferred/s.totalBytes*100);
+      document.getElementById('progressFill').style.width=p+'%';
+      document.getElementById('progressPct').textContent=p+'%';
+      document.getElementById('progressLabel').textContent=p<100?'Envoi de la vidéo...':'Finalisation...';
+    },e=>{console.error(e);alert('Erreur upload');btn.disabled=false;btn.textContent='🚀 Publier';},
+    async()=>{
+      const vurl=await getDownloadURL(task.snapshot.ref);
+      let turl='';
+      if(tfile){const tr=ref(storage,`thumbnails/${me.uid}/${Date.now()}_${tfile.name}`);const tt=uploadBytesResumable(tr,tfile);await new Promise((res,rej)=>tt.on('state_changed',null,rej,res));turl=await getDownloadURL(tt.snapshot.ref);}
+      await addDoc(collection(db,'videos'),{
+        title,description:document.getElementById('descInput').value.trim(),
+        type:document.getElementById('typeSelect').value,isPaid,price,
+        duration:document.getElementById('durInput').value.trim(),
+        videoUrl:vurl,thumbnail:turl,
+        channelId:me.uid,channelName:me.displayName,channelPhoto:me.photoURL,
+        views:0,likes:0,createdAt:serverTimestamp()
+      });
+      alert('✅ Publié !');window.location.href='../index.html';
+    });
+  }catch(e){console.error(e);alert('Erreur: '+e.message);btn.disabled=false;btn.textContent='🚀 Publier';}
+};
+
+window.loginGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){}};
+window.logoutUser=async()=>{await signOut(auth);window.location.href='../index.html';};
+window.toggleMenu=()=>{document.getElementById('dropdown').classList.toggle('hidden');};
+</script>
+</body>
+</html>

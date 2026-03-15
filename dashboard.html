@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Tableau de bord — PIDE Stream</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="../index.html" class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 24 24" fill="white"><polygon points="9,6 20,12 9,18"/></svg></div>
+    <span class="logo-name">PIDE<span>stream</span></span>
+  </a>
+  <div class="nav-right">
+    <a href="upload.html" class="btn-red" style="border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Publier
+    </a>
+    <div class="avatar-wrap" id="avatarWrap">
+      <img src="" class="avatar" id="userAvatar" onclick="toggleMenu()"/>
+      <div class="dropdown hidden" id="dropdown">
+        <div class="dropdown-head"><img src="" id="ddAvatar"/><div><div class="dropdown-head-name" id="ddName"></div><div class="dropdown-head-email" id="ddEmail"></div></div></div>
+        <a href="../index.html" class="dropdown-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Accueil</a>
+        <a href="#" id="ddChannel" class="dropdown-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Ma chaîne</a>
+        <button class="dropdown-item red" onclick="logoutUser()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<aside class="sidebar">
+  <a href="../index.html" class="sidebar-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Accueil</a>
+  <a href="dashboard.html" class="sidebar-item active"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Studio</a>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <h1>Tableau de bord</h1>
+    <p>Suis les performances de ta chaîne</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Vues totales</div>
+      <div class="stat-value" id="statViews">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Abonnés</div>
+      <div class="stat-value" id="statSubs">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Vidéos publiées</div>
+      <div class="stat-value" id="statVids">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Likes reçus</div>
+      <div class="stat-value" id="statLikes">—</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2 style="font-size:16px;font-weight:500">Mes vidéos & films</h2>
+    <a href="upload.html" class="btn-red" style="padding:8px 16px;font-size:13px;border-radius:8px">+ Publier</a>
+  </div>
+
+  <div id="videoList"></div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, getDocs, deleteDoc, collection, query, where, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyBmVFW68wgt6x0AsAKxhi8mXsuwFVEErZ0",authDomain:"pide-streaming.firebaseapp.com",projectId:"pide-streaming",storageBucket:"pide-streaming.firebasestorage.app",messagingSenderId:"659902528117",appId:"1:659902528117:web:77eb7419642a108379963c"};
+const app=initializeApp(cfg);const auth=getAuth(app);const db=getFirestore(app);
+let me=null;
+
+onAuthStateChanged(auth,async u=>{
+  if(!u){window.location.href='../index.html';return;}
+  me=u;
+  ['userAvatar','ddAvatar'].forEach(id=>document.getElementById(id).src=u.photoURL);
+  document.getElementById('ddName').textContent=u.displayName;
+  document.getElementById('ddEmail').textContent=u.email;
+  document.getElementById('ddChannel').href=`channel.html?uid=${u.uid}`;
+  loadDash();
+});
+
+async function loadDash(){
+  const us=await getDoc(doc(db,'users',me.uid));
+  document.getElementById('statSubs').textContent=(us.data()?.subscribers||0).toLocaleString();
+  const q=query(collection(db,'videos'),where('channelId','==',me.uid),orderBy('createdAt','desc'));
+  const snap=await getDocs(q);
+  const vids=snap.docs.map(d=>({id:d.id,...d.data()}));
+  let views=0,likes=0;
+  vids.forEach(v=>{views+=v.views||0;likes+=v.likes||0;});
+  document.getElementById('statViews').textContent=views.toLocaleString();
+  document.getElementById('statVids').textContent=vids.length;
+  document.getElementById('statLikes').textContent=likes.toLocaleString();
+
+  const list=document.getElementById('videoList');
+  if(vids.length===0){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">🎬</div><h2>Aucune vidéo</h2><p>Publie ton premier contenu !</p><a href="upload.html" class="btn-red" style="display:inline-block;margin-top:16px;padding:10px 22px;border-radius:8px;text-decoration:none">+ Publier</a></div>`;
+    return;
+  }
+  list.innerHTML=vids.map(v=>`<div class="video-row">
+    <div class="video-row-thumb">${v.thumbnail?`<img src="${v.thumbnail}"/>`:'<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:22px">🎬</div>'}</div>
+    <div class="video-row-info">
+      <div class="video-row-title">${v.title}</div>
+      <div class="video-row-meta">${v.type==='film'?'🎬 Film':'📹 Vidéo'} · ${v.isPaid?`💰 ${v.price}€`:'🆓 Gratuit'} ${v.duration?'· '+v.duration:''}</div>
+    </div>
+    <div class="video-row-stats"><span>👁 ${(v.views||0).toLocaleString()}</span><span>👍 ${v.likes||0}</span></div>
+    <a href="watch.html?id=${v.id}" style="color:#aaa;font-size:13px;padding:6px 12px;border:1px solid var(--bg4);border-radius:6px;white-space:nowrap">Voir</a>
+    <button class="btn-delete" onclick="delVideo('${v.id}',this)">Supprimer</button>
+  </div>`).join('');
+}
+
+window.delVideo=async(id,btn)=>{
+  if(!confirm('Supprimer cette vidéo ?'))return;
+  btn.textContent='...';
+  await deleteDoc(doc(db,'videos',id));
+  btn.closest('.video-row').remove();
+};
+
+window.logoutUser=async()=>{await signOut(auth);window.location.href='../index.html';};
+window.toggleMenu=()=>{document.getElementById('dropdown').classList.toggle('hidden');};
+document.addEventListener('click',e=>{const w=document.getElementById('avatarWrap');if(w&&!w.contains(e.target))document.getElementById('dropdown')?.classList.add('hidden');});
+</script>
+</body>
+</html>

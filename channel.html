@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Chaîne — PIDE Stream</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="../index.html" class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 24 24" fill="white"><polygon points="9,6 20,12 9,18"/></svg></div>
+    <span class="logo-name">PIDE<span>stream</span></span>
+  </a>
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Rechercher"/>
+    <button class="search-btn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg></button>
+  </div>
+  <div class="nav-right">
+    <button class="btn-login hidden" id="btnLogin" onclick="loginGoogle()">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Se connecter
+    </button>
+    <a href="upload.html" class="btn-upload hidden" id="btnUpload"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></a>
+    <div class="avatar-wrap hidden" id="avatarWrap">
+      <img src="" class="avatar" id="userAvatar" onclick="toggleMenu()"/>
+      <div class="dropdown hidden" id="dropdown">
+        <div class="dropdown-head"><img src="" id="ddAvatar"/><div><div class="dropdown-head-name" id="ddName"></div></div></div>
+        <a href="dashboard.html" class="dropdown-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Tableau de bord</a>
+        <button class="dropdown-item red" onclick="logoutUser()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<aside class="sidebar">
+  <a href="../index.html" class="sidebar-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Accueil</a>
+  <a href="../index.html?cat=film" class="sidebar-item"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>Films</a>
+</aside>
+
+<!-- Bannière chaîne -->
+<div class="channel-banner">
+  <div class="channel-banner-inner">
+    <img src="" id="chanAvatar"/>
+    <div style="flex:1">
+      <h1 id="chanName">—</h1>
+      <div class="channel-banner-meta" id="chanMeta">— abonnés · — vidéos</div>
+    </div>
+    <button class="btn-subscribe" id="btnSub" onclick="toggleSub()" style="display:none">S'abonner</button>
+  </div>
+</div>
+
+<!-- Contenu -->
+<div style="margin-left:var(--sidebar);padding:0 24px 60px;max-width:calc(1100px + var(--sidebar))">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('video',this)">Vidéos</button>
+    <button class="tab" onclick="showTab('film',this)">Films</button>
+  </div>
+  <div class="video-grid" id="grid"></div>
+  <div class="empty hidden" id="empty">
+    <div class="empty-icon">📭</div>
+    <h2>Aucun contenu</h2>
+    <p>Cette chaîne n'a pas encore publié.</p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, getDocs, collection, query, where, setDoc, deleteDoc, updateDoc, increment, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyBmVFW68wgt6x0AsAKxhi8mXsuwFVEErZ0",authDomain:"pide-streaming.firebaseapp.com",projectId:"pide-streaming",storageBucket:"pide-streaming.firebasestorage.app",messagingSenderId:"659902528117",appId:"1:659902528117:web:77eb7419642a108379963c"};
+const app=initializeApp(cfg);const auth=getAuth(app);const db=getFirestore(app);const prov=new GoogleAuthProvider();
+const chanUid=new URLSearchParams(location.search).get('uid');
+let me=null,subbed=false,allVids=[];
+
+onAuthStateChanged(auth,u=>{
+  me=u;
+  if(u){
+    document.getElementById('btnLogin').classList.add('hidden');
+    document.getElementById('btnUpload').classList.remove('hidden');
+    document.getElementById('avatarWrap').classList.remove('hidden');
+    ['userAvatar','ddAvatar'].forEach(id=>document.getElementById(id).src=u.photoURL);
+    document.getElementById('ddName').textContent=u.displayName;
+    if(chanUid!==u.uid){document.getElementById('btnSub').style.display='block';checkSub();}
+  } else { document.getElementById('btnLogin').classList.remove('hidden'); }
+});
+
+async function loadChannel(){
+  if(!chanUid)return;
+  const us=await getDoc(doc(db,'users',chanUid));
+  if(!us.exists())return;
+  const u=us.data();
+  document.title=`${u.displayName} — PIDE Stream`;
+  document.getElementById('chanAvatar').src=u.photoURL||'';
+  document.getElementById('chanName').textContent=u.displayName||u.channelName;
+  const vs=await getDocs(query(collection(db,'videos'),where('channelId','==',chanUid)));
+  document.getElementById('chanMeta').textContent=`${u.subscribers||0} abonnés · ${vs.size} vidéos`;
+  allVids=vs.docs.map(d=>({id:d.id,...d.data()}));
+  render('video');
+}
+
+function render(type){
+  const filtered=allVids.filter(v=>v.type===type);
+  const grid=document.getElementById('grid');
+  const empty=document.getElementById('empty');
+  if(filtered.length===0){grid.innerHTML='';empty.classList.remove('hidden');return;}
+  empty.classList.add('hidden');
+  grid.innerHTML=filtered.map(v=>`<a href="watch.html?id=${v.id}" class="vcard">
+    <div class="vthumb">
+      ${v.thumbnail?`<img class="vthumb-img" src="${v.thumbnail}"/>`:'<div class="vthumb-placeholder">🎬</div>'}
+      ${v.duration?`<div class="vduration">${v.duration}</div>`:''}
+      ${v.isPaid?`<div class="vpaid">💰 ${v.price}€</div>`:''}
+      ${v.type==='film'?`<div class="vfilm">FILM</div>`:''}
+    </div>
+    <div class="vinfo"><div class="vmeta">
+      <div class="vtitle">${v.title}</div>
+      <div class="vviews">${v.views||0} vues</div>
+    </div></div>
+  </a>`).join('');
+}
+
+window.showTab=(type,btn)=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active'); render(type);
+};
+
+async function checkSub(){
+  if(!me)return;
+  const s=await getDoc(doc(db,'subscriptions',`${me.uid}_${chanUid}`));
+  subbed=s.exists();
+  const b=document.getElementById('btnSub');
+  b.textContent=subbed?'✓ Abonné':"S'abonner";
+  b.classList.toggle('subscribed',subbed);
+}
+
+window.toggleSub=async()=>{
+  if(!me){alert('Connectez-vous !');return;}
+  const sr=doc(db,'subscriptions',`${me.uid}_${chanUid}`),cr=doc(db,'users',chanUid);
+  if(subbed){await deleteDoc(sr);await updateDoc(cr,{subscribers:increment(-1)});subbed=false;}
+  else{await setDoc(sr,{userId:me.uid,channelId:chanUid,createdAt:serverTimestamp()});await updateDoc(cr,{subscribers:increment(1)});subbed=true;}
+  const b=document.getElementById('btnSub');b.textContent=subbed?'✓ Abonné':"S'abonner";b.classList.toggle('subscribed',subbed);
+};
+
+window.loginGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){}};
+window.logoutUser=async()=>{await signOut(auth);};
+window.toggleMenu=()=>{document.getElementById('dropdown').classList.toggle('hidden');};
+document.addEventListener('click',e=>{const w=document.getElementById('avatarWrap');if(w&&!w.contains(e.target))document.getElementById('dropdown')?.classList.add('hidden');});
+loadChannel();
+</script>
+</body>
+</html>

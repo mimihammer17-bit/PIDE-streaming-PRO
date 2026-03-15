@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>PIDE Stream</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="white"><polygon points="9,6 20,12 9,18"/></svg>
+    </div>
+    <span class="logo-name">PIDE<span>stream</span></span>
+  </a>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" id="searchInput" placeholder="Rechercher"/>
+    <button class="search-btn" onclick="doSearch()">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>
+    </button>
+  </div>
+
+  <div class="nav-right">
+    <button class="btn-login" id="btnLogin" onclick="loginGoogle()">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Se connecter
+    </button>
+    <a href="pages/upload.html" class="btn-upload hidden" id="btnUpload" title="Publier une vidéo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    </a>
+    <div class="avatar-wrap hidden" id="avatarWrap">
+      <img src="" class="avatar" id="userAvatar" onclick="toggleMenu()"/>
+      <div class="dropdown hidden" id="dropdown">
+        <div class="dropdown-head">
+          <img src="" id="ddAvatar"/>
+          <div>
+            <div class="dropdown-head-name" id="ddName"></div>
+            <div class="dropdown-head-email" id="ddEmail"></div>
+          </div>
+        </div>
+        <a href="pages/dashboard.html" class="dropdown-item">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Tableau de bord
+        </a>
+        <a href="#" class="dropdown-item" id="ddChannel">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Ma chaîne
+        </a>
+        <button class="dropdown-item red" onclick="logoutUser()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <a href="index.html" class="sidebar-item active">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    Accueil
+  </a>
+  <a href="index.html?cat=tendances" class="sidebar-item">
+    <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    Tendances
+  </a>
+  <a href="index.html?cat=film" class="sidebar-item">
+    <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+    Films
+  </a>
+  <a href="pages/dashboard.html" class="sidebar-item" id="sidebarDash" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    Studio
+  </a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="chips" id="chips">
+    <button class="chip active" onclick="setChip(this,'tout')">Tout</button>
+    <button class="chip" onclick="setChip(this,'video')">Vidéos</button>
+    <button class="chip" onclick="setChip(this,'film')">Films</button>
+    <button class="chip" onclick="setChip(this,'gratuit')">Gratuit</button>
+    <button class="chip" onclick="setChip(this,'tendances')">Tendances</button>
+  </div>
+
+  <div class="video-grid" id="grid"></div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, query, orderBy, where, getDocs, doc, setDoc, getDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const cfg = {
+  apiKey:"AIzaSyBmVFW68wgt6x0AsAKxhi8mXsuwFVEErZ0",
+  authDomain:"pide-streaming.firebaseapp.com",
+  projectId:"pide-streaming",
+  storageBucket:"pide-streaming.firebasestorage.app",
+  messagingSenderId:"659902528117",
+  appId:"1:659902528117:web:77eb7419642a108379963c"
+};
+const app = initializeApp(cfg);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const prov = new GoogleAuthProvider();
+let currentFilter = 'tout';
+
+onAuthStateChanged(auth, async u => {
+  if(u){
+    const ref = doc(db,"users",u.uid);
+    const snap = await getDoc(ref);
+    if(!snap.exists()) await setDoc(ref,{uid:u.uid,displayName:u.displayName,email:u.email,photoURL:u.photoURL,channelName:u.displayName,subscribers:0,createdAt:serverTimestamp()});
+    document.getElementById('btnLogin').classList.add('hidden');
+    document.getElementById('btnUpload').classList.remove('hidden');
+    document.getElementById('avatarWrap').classList.remove('hidden');
+    document.getElementById('sidebarDash').style.display='flex';
+    ['userAvatar','ddAvatar'].forEach(id=>document.getElementById(id).src=u.photoURL);
+    document.getElementById('ddName').textContent=u.displayName;
+    document.getElementById('ddEmail').textContent=u.email;
+    document.getElementById('ddChannel').href=`pages/channel.html?uid=${u.uid}`;
+  } else {
+    document.getElementById('btnLogin').classList.remove('hidden');
+    document.getElementById('btnUpload').classList.add('hidden');
+    document.getElementById('avatarWrap').classList.add('hidden');
+    document.getElementById('sidebarDash').style.display='none';
+  }
+  loadVideos(currentFilter);
+});
+
+window.loginGoogle = async()=>{ try{ await signInWithPopup(auth,prov); }catch(e){console.error(e);} };
+window.logoutUser = async()=>{ await signOut(auth); document.getElementById('dropdown').classList.add('hidden'); };
+window.toggleMenu = ()=>{ document.getElementById('dropdown').classList.toggle('hidden'); };
+document.addEventListener('click',e=>{ const w=document.getElementById('avatarWrap'); if(w&&!w.contains(e.target)) document.getElementById('dropdown')?.classList.add('hidden'); });
+
+window.setChip = (btn, filter)=>{
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter=filter;
+  loadVideos(filter);
+};
+
+window.doSearch = ()=>{
+  const q=document.getElementById('searchInput').value.trim();
+  if(q) window.location.href=`pages/search.html?q=${encodeURIComponent(q)}`;
+};
+
+async function loadVideos(filter){
+  const grid=document.getElementById('grid');
+  grid.innerHTML=skeletons(12);
+  try{
+    let q;
+    if(filter==='film') q=query(collection(db,'videos'),where('type','==','film'),orderBy('createdAt','desc'));
+    else if(filter==='video') q=query(collection(db,'videos'),where('type','==','video'),orderBy('createdAt','desc'));
+    else if(filter==='gratuit') q=query(collection(db,'videos'),where('isPaid','==',false),orderBy('createdAt','desc'));
+    else if(filter==='tendances') q=query(collection(db,'videos'),orderBy('views','desc'));
+    else q=query(collection(db,'videos'),orderBy('createdAt','desc'));
+    const snap=await getDocs(q);
+    const vids=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(vids.length===0){ grid.innerHTML=`<div class="empty"><div class="empty-icon">🎬</div><h2>Aucune vidéo</h2><p>Sois le premier à publier sur PIDE Stream !</p></div>`; return; }
+    grid.innerHTML=vids.map(card).join('');
+  }catch(e){ console.error(e); grid.innerHTML=`<div class="empty"><p style="color:#aaa">Erreur de chargement</p></div>`; }
+}
+
+function card(v){
+  const thumb=v.thumbnail?`<img class="vthumb-img" src="${v.thumbnail}" alt="${v.title}"/>`:`<div class="vthumb-placeholder">🎬</div>`;
+  return `<a href="pages/watch.html?id=${v.id}" class="vcard">
+    <div class="vthumb">
+      ${thumb}
+      ${v.duration?`<div class="vduration">${v.duration}</div>`:''}
+      ${v.isPaid?`<div class="vpaid">💰 ${v.price}€</div>`:''}
+      ${v.type==='film'?`<div class="vfilm">FILM</div>`:''}
+    </div>
+    <div class="vinfo">
+      <img class="vchan-avatar" src="${v.channelPhoto||''}" onerror="this.style.visibility='hidden'"/>
+      <div class="vmeta">
+        <div class="vtitle">${v.title}</div>
+        <div class="vchan-name">${v.channelName||''}</div>
+        <div class="vviews">${fmtViews(v.views)} · ${fmtDate(v.createdAt)}</div>
+      </div>
+    </div>
+  </a>`;
+}
+
+function skeletons(n){
+  return Array(n).fill(0).map(()=>`<div>
+    <div class="skel skel-thumb"></div>
+    <div style="display:flex;gap:10px"><div class="skel skel-circle"></div>
+    <div style="flex:1"><div class="skel skel-line" style="margin-bottom:7px"></div><div class="skel skel-line s"></div></div></div>
+  </div>`).join('');
+}
+
+function fmtViews(n){
+  if(!n) return '0 vue';
+  if(n>=1000000) return `${(n/1000000).toFixed(1)}M vues`;
+  if(n>=1000) return `${(n/1000).toFixed(1)}k vues`;
+  return `${n} vue${n>1?'s':''}`;
+}
+function fmtDate(ts){
+  if(!ts) return '';
+  const d=ts.toDate?ts.toDate():new Date(ts);
+  const days=Math.floor((Date.now()-d.getTime())/86400000);
+  if(days===0) return "Aujourd'hui";
+  if(days===1) return 'Hier';
+  if(days<7) return `Il y a ${days} jours`;
+  if(days<30) return `Il y a ${Math.floor(days/7)} sem.`;
+  if(days<365) return `Il y a ${Math.floor(days/30)} mois`;
+  return `Il y a ${Math.floor(days/365)} an(s)`;
+}
+</script>
+</body>
+</html>
